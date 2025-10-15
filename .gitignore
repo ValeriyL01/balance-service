@@ -1,0 +1,27 @@
+# Конфигурационные файлы с секретами
+.env
+.env.local
+.env.production
+config.env
+
+# Бинарные файлы
+bin/
+*.exe
+
+# IDE файлы
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Go файлы
+*.test
+*.prof
+coverage.out
+
+# Логи
+*.log
+
+# Временные файлы
+tmp/
+temp/
