@@ -13,14 +13,14 @@ import (
 func main() {
 	err := godotenv.Load()
 	if err != nil {
-		log.Println("Файл .env не найден, используем переменные окружения")
+		log.Println("Файл .env не найден")
 	}
 
-	db, err := database.Connect()
+	err = database.ConnectAndInit()
 	if err != nil {
-		log.Fatal("Ошибка подключения к базе:", err)
+		log.Fatal("Ошибка инициализации БД:", err)
 	}
-	defer db.Close()
+	defer database.DB.Close()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/balance", handlers.GetUserBalance)

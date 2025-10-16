@@ -2,14 +2,36 @@ package database
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 
+	"github.com/ValeriyL01/balance-service/internal/models"
 	_ "github.com/lib/pq"
 )
 
-func Connect() (*sql.DB, error) {
+// Глобальная переменная для подключения к БД
+var DB *sql.DB
 
+func ConnectAndInit() error {
+	db, err := Connect()
+	if err != nil {
+		return err
+	}
+
+	// Инициализируем глобальную переменную
+	DB = db
+
+	err = createBalancesTable()
+	if err != nil {
+		db.Close()
+		return fmt.Errorf("failed to init tables: %w", err)
+	}
+
+	return nil
+}
+
+func Connect() (*sql.DB, error) {
 	dbUser := getEnv("DB_USER", "")
 	dbPassword := getEnv("DB_PASSWORD", "")
 	dbName := getEnv("DB_NAME", "")
@@ -32,9 +54,50 @@ func Connect() (*sql.DB, error) {
 
 	return db, nil
 }
+
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
 	}
 	return defaultValue
+}
+
+func createBalancesTable() error {
+	query := `
+        CREATE TABLE IF NOT EXISTS balances (
+            user_id BIGINT PRIMARY KEY,
+            balance DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`
+
+	_, err := DB.Exec(query)
+	if err != nil {
+		return fmt.Errorf("ошибка создания таблицы баланса: %w", err)
+	}
+
+	return nil
+}
+
+func GetUserBalanceDB(userID int) (*models.BalanceResponse, error) {
+
+	if DB == nil {
+		return nil, fmt.Errorf("база данных не инициализирована ")
+	}
+
+	userBalance := `SELECT user_id, balance FROM balances WHERE user_id = $1`
+
+	data := DB.QueryRow(userBalance, userID)
+
+	balance := &models.BalanceResponse{}
+
+	err := data.Scan(&balance.UserID, &balance.Balance)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("user c id: %d не найден", userID)
+		}
+		return nil, fmt.Errorf(" баланс не получен для юзера c id: %d: %w", userID, err)
+	}
+
+	return balance, nil
 }
