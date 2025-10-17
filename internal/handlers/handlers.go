@@ -2,9 +2,12 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
+	"log"
 	"net/http"
 	"strconv"
 
+	"github.com/ValeriyL01/balance-service/internal/models"
 	"github.com/ValeriyL01/balance-service/internal/service"
 )
 
@@ -30,4 +33,37 @@ func GetUserBalance(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+func DepositBalance(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "нужен метод POST", http.StatusMethodNotAllowed)
+		return
+	}
+	var request models.BalanceRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		log.Printf("Ошибка парсинга JSON: %v", err)
+		http.Error(w, "Неверный формат JSON", http.StatusBadRequest)
+		return
+	}
+
+	err := service.DepositBalanceService(request)
+	if err != nil {
+		log.Printf("Ошибка при пополнении баланса: %v", err)
+
+		if errors.Is(err, service.ErrInvalidAmount) {
+			http.Error(w, "Сумма должна быть положительной", http.StatusBadRequest)
+		} else {
+			http.Error(w, "Не удалось пополнить баланс", http.StatusInternalServerError)
+			return
+		}
+
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"status":  "success",
+		"message": "Баланс успешно пополнен",
+	})
+
 }

@@ -23,11 +23,16 @@ func ConnectAndInit() error {
 	DB = db
 
 	err = createBalancesTable()
+
 	if err != nil {
 		db.Close()
 		return fmt.Errorf("failed to init tables: %w", err)
 	}
-
+	err = createTransactionTable()
+	if err != nil {
+		db.Close()
+		return fmt.Errorf("failed to init tables: %w", err)
+	}
 	return nil
 }
 
@@ -79,6 +84,23 @@ func createBalancesTable() error {
 	return nil
 }
 
+func createTransactionTable() error {
+	query := `
+  CREATE TABLE IF NOT EXISTS transactions (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    amount DECIMAL(15,2) NOT NULL,
+    type VARCHAR(20) NOT NULL,
+    related_user_id BIGINT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)`
+	_, err := DB.Exec(query)
+	if err != nil {
+		return fmt.Errorf("ошибка создания таблицы транзакций: %w", err)
+	}
+	return nil
+}
+
 func GetUserBalanceDB(userID int) (*models.BalanceResponse, error) {
 
 	if DB == nil {
@@ -100,4 +122,44 @@ func GetUserBalanceDB(userID int) (*models.BalanceResponse, error) {
 	}
 
 	return balance, nil
+}
+
+func DepositBalanceDB(balance models.BalanceRequest) error {
+	if DB == nil {
+		return fmt.Errorf("база данных не инициализирована ")
+	}
+	tx, err := DB.Begin()
+	if err != nil {
+		return fmt.Errorf("ошибка транзакции: %w", err)
+	}
+	defer tx.Rollback()
+	balanceQuery := `
+		INSERT INTO balances (user_id, balance) 
+		VALUES ($1, $2)
+		ON CONFLICT (user_id) 
+		DO UPDATE SET 
+			balance = balances.balance + $2,
+			updated_at = CURRENT_TIMESTAMP
+	`
+
+	_, err = tx.Exec(balanceQuery, balance.UserID, balance.Amount)
+	if err != nil {
+		return fmt.Errorf("ошибка обновления баланса: %w", err)
+	}
+
+	transactionQuery := `
+INSERT INTO transactions (user_id,amount,type)
+VALUES ($1,$2,$3)
+`
+
+	_, err = tx.Exec(transactionQuery, balance.UserID, balance.Amount, "deposit")
+	if err != nil {
+		return fmt.Errorf("ошибка записи транзакции: %w", err)
+	}
+
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("ошибка коммита транзакции: %w", err)
+	}
+
+	return nil
 }

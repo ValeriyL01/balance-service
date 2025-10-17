@@ -24,7 +24,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/balance", handlers.GetUserBalance)
-
+	mux.HandleFunc("/deposit", handlers.DepositBalance)
 	err = http.ListenAndServe(":4000", mux)
 
 	log.Fatal(err)
