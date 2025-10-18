@@ -163,3 +163,42 @@ VALUES ($1,$2,$3)
 
 	return nil
 }
+
+func WithdrawBalanceDB(balance models.BalanceRequest) error {
+	if DB == nil {
+		return fmt.Errorf("база данных не инициализирована ")
+	}
+	tx, err := DB.Begin()
+	if err != nil {
+		return fmt.Errorf("ошибка транзакции: %w", err)
+	}
+	defer tx.Rollback()
+
+	balanceQuery := `
+UPDATE balances 
+SET balance = balance - $1,
+    updated_at = CURRENT_TIMESTAMP
+WHERE user_id = $2 
+`
+
+	_, err = tx.Exec(balanceQuery, balance.Amount, balance.UserID)
+	if err != nil {
+		return fmt.Errorf("ошибка обновления баланса: %w", err)
+	}
+	transactionQuery := `
+INSERT INTO transactions (user_id,amount,type)
+VALUES ($1,$2,$3)
+`
+
+	_, err = tx.Exec(transactionQuery, balance.UserID, balance.Amount, "withdrawal")
+	if err != nil {
+		return fmt.Errorf("ошибка записи транзакции: %w", err)
+	}
+
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("ошибка коммита транзакции: %w", err)
+	}
+
+	return nil
+
+}

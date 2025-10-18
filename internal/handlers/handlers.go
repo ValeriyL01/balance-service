@@ -67,3 +67,37 @@ func DepositBalance(w http.ResponseWriter, r *http.Request) {
 	})
 
 }
+
+func WithdrawBalance(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "нужен метод POST", http.StatusMethodNotAllowed)
+	}
+
+	var request models.BalanceRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		log.Printf("Ошибка парсинга JSON: %v", err)
+		http.Error(w, "Неверный формат JSON", http.StatusBadRequest)
+		return
+	}
+
+	err := service.WithdrawBalanceService(request)
+	if err != nil {
+
+		if errors.Is(err, service.ErrInvalidAmount) {
+			http.Error(w, "Сумма должна быть положительной", http.StatusBadRequest)
+			return
+		} else if errors.Is(err, service.ErrNoMoney) {
+			http.Error(w, "Недостаточно средств", http.StatusBadRequest)
+			return
+		} else {
+			http.Error(w, "списание не удалось", http.StatusInternalServerError)
+			return
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"status":  "success",
+		"message": "Успешное списание",
+	})
+}
