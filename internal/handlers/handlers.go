@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/ValeriyL01/balance-service/internal/customErrors"
 	"github.com/ValeriyL01/balance-service/internal/models"
 	"github.com/ValeriyL01/balance-service/internal/service"
 )
@@ -27,6 +28,12 @@ func GetUserBalance(w http.ResponseWriter, r *http.Request) {
 
 	response, err := service.GetBalance(userID)
 	if err != nil {
+
+		if errors.Is(err, customErrors.ErrUserNotFound) {
+			http.Error(w, "Пользователь не найден", http.StatusNotFound)
+			return
+		}
+
 		http.Error(w, "Не удалось получить баланс", http.StatusInternalServerError)
 		return
 	}
@@ -52,7 +59,7 @@ func DepositBalance(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("Ошибка при пополнении баланса: %v", err)
 
-		if errors.Is(err, service.ErrInvalidAmount) {
+		if errors.Is(err, customErrors.ErrInvalidAmount) {
 			http.Error(w, "Сумма должна быть положительной", http.StatusBadRequest)
 		} else {
 			http.Error(w, "Не удалось пополнить баланс", http.StatusInternalServerError)
@@ -84,11 +91,14 @@ func WithdrawBalance(w http.ResponseWriter, r *http.Request) {
 	err := service.WithdrawBalanceService(request)
 	if err != nil {
 
-		if errors.Is(err, service.ErrInvalidAmount) {
+		if errors.Is(err, customErrors.ErrInvalidAmount) {
 			http.Error(w, "Сумма должна быть положительной", http.StatusBadRequest)
 			return
-		} else if errors.Is(err, service.ErrNoMoney) {
+		} else if errors.Is(err, customErrors.ErrNoMoney) {
 			http.Error(w, "Недостаточно средств", http.StatusBadRequest)
+			return
+		} else if errors.Is(err, customErrors.ErrUserNotFound) {
+			http.Error(w, "Пользователь не найден", http.StatusNotFound)
 			return
 		} else {
 			http.Error(w, "списание не удалось", http.StatusInternalServerError)

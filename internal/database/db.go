@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ValeriyL01/balance-service/internal/customErrors"
 	"github.com/ValeriyL01/balance-service/internal/models"
+	
 	_ "github.com/lib/pq"
 )
 
@@ -115,8 +117,10 @@ func GetUserBalanceDB(userID int) (*models.BalanceResponse, error) {
 
 	err := data.Scan(&balance.UserID, &balance.Balance)
 	if err != nil {
+
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("user c id: %d не найден", userID)
+
+			return nil, customErrors.ErrUserNotFound
 		}
 		return nil, fmt.Errorf(" баланс не получен для юзера c id: %d: %w", userID, err)
 	}
