@@ -8,7 +8,7 @@ import (
 
 	"github.com/ValeriyL01/balance-service/internal/customErrors"
 	"github.com/ValeriyL01/balance-service/internal/models"
-	
+
 	_ "github.com/lib/pq"
 )
 
@@ -151,14 +151,9 @@ func DepositBalanceDB(balance models.BalanceRequest) error {
 		return fmt.Errorf("ошибка обновления баланса: %w", err)
 	}
 
-	transactionQuery := `
-INSERT INTO transactions (user_id,amount,type)
-VALUES ($1,$2,$3)
-`
-
-	_, err = tx.Exec(transactionQuery, balance.UserID, balance.Amount, "deposit")
+	err = transactionEntry(balance, "deposit")
 	if err != nil {
-		return fmt.Errorf("ошибка записи транзакции: %w", err)
+		return err
 	}
 
 	if err = tx.Commit(); err != nil {
@@ -189,14 +184,10 @@ WHERE user_id = $2
 	if err != nil {
 		return fmt.Errorf("ошибка обновления баланса: %w", err)
 	}
-	transactionQuery := `
-INSERT INTO transactions (user_id,amount,type)
-VALUES ($1,$2,$3)
-`
 
-	_, err = tx.Exec(transactionQuery, balance.UserID, balance.Amount, "withdrawal")
+	err = transactionEntry(balance, "withdraw")
 	if err != nil {
-		return fmt.Errorf("ошибка записи транзакции: %w", err)
+		return err
 	}
 
 	if err = tx.Commit(); err != nil {
@@ -205,4 +196,19 @@ VALUES ($1,$2,$3)
 
 	return nil
 
+}
+
+// Функция для обновления таблицы транзакций
+func transactionEntry(balance models.BalanceRequest, tpansactionType string) error {
+	transactionQuery := `
+INSERT INTO transactions (user_id,amount,type)
+VALUES ($1,$2,$3)
+`
+
+	_, err := DB.Exec(transactionQuery, balance.UserID, balance.Amount, tpansactionType)
+	if err != nil {
+		return fmt.Errorf("ошибка записи транзакции: %w", err)
+	}
+
+	return nil
 }
