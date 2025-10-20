@@ -19,14 +19,16 @@ func GetUserBalance(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Укажите user_id", http.StatusBadRequest)
 		return
 	}
+	
+	currency := r.URL.Query().Get("currency")
 
 	userID, err := strconv.Atoi(userIDStr)
 	if err != nil {
 		http.Error(w, "user_id должен быть числом", http.StatusBadRequest)
 		return
 	}
-
-	response, err := service.GetBalance(userID)
+	// если в Query параметры передано currency=USD возвращаем в долларах в любых других случаях в рублях
+	response, err := service.GetBalance(userID, currency)
 	if err != nil {
 
 		if errors.Is(err, customErrors.ErrUserNotFound) {
@@ -40,6 +42,7 @@ func GetUserBalance(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+
 }
 
 func DepositBalance(w http.ResponseWriter, r *http.Request) {
