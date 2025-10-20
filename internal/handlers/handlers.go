@@ -111,3 +111,39 @@ func WithdrawBalance(w http.ResponseWriter, r *http.Request) {
 		"message": "Успешное списание",
 	})
 }
+
+func TransferMoney(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "нужен метод POST", http.StatusMethodNotAllowed)
+	}
+	var request models.TransferRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		log.Printf("ошибка парсинга JSON: %v", err)
+		http.Error(w, "Неверный формат JSON", http.StatusBadRequest)
+		return
+	}
+
+	err := service.TransferMoneyService(request)
+	if err != nil {
+
+		if errors.Is(err, customErrors.ErrInvalidAmount) {
+			http.Error(w, "Сумма должна быть положительной", http.StatusBadRequest)
+			return
+		} else if errors.Is(err, customErrors.ErrNoMoney) {
+			http.Error(w, "Недостаточно средств", http.StatusBadRequest)
+			return
+		} else if errors.Is(err, customErrors.ErrUserNotFound) {
+			http.Error(w, "Пользователь не найден", http.StatusNotFound)
+			return
+		} else {
+			http.Error(w, "Не удалось перевести деньги", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"status":  "success",
+		"message": "Перевод выполнен успешно",
+	})
+}

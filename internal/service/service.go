@@ -40,13 +40,40 @@ func WithdrawBalanceService(balance models.BalanceRequest) error {
 		return err
 	}
 
-	if userBalance.Balance <= balance.Amount {
+	if userBalance.Balance < balance.Amount {
 		return customErrors.ErrNoMoney
 	}
 
 	err = database.WithdrawBalanceDB(balance)
 	if err != nil {
 		return fmt.Errorf("не удалось списать деньги: %w", err)
+	}
+	return nil
+
+}
+
+func TransferMoneyService(transfer models.TransferRequest) error {
+	if transfer.Amount <= 0 {
+		return customErrors.ErrInvalidAmount
+	}
+
+	userBalance, err := GetBalance(int(transfer.FromUserID))
+	if err != nil {
+
+		return err
+	}
+	_, err = GetBalance(int(transfer.ToUserID))
+	if err != nil {
+
+		return err
+	}
+	if userBalance.Balance < transfer.Amount {
+		return customErrors.ErrNoMoney
+	}
+
+	err = database.TransferMoneyDB(transfer)
+	if err != nil {
+		return fmt.Errorf("не удалось перевести деньги: %w", err)
 	}
 	return nil
 

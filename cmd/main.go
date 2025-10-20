@@ -26,7 +26,7 @@ func main() {
 	mux.HandleFunc("/balance", handlers.GetUserBalance)
 	mux.HandleFunc("/deposit", handlers.DepositBalance)
 	mux.HandleFunc("/withdraw", handlers.WithdrawBalance)
-	//mux.HandleFunc("/transfer", handlers.TransferMoney)
+	mux.HandleFunc("/transfer", handlers.TransferMoney)
 	err = http.ListenAndServe(":4000", mux)
 
 	log.Fatal(err)

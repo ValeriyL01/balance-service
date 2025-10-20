@@ -49,11 +49,13 @@ func Connect() (*sql.DB, error) {
 	connStr := fmt.Sprintf("user=%s password=%s dbname=%s host=%s port=%s sslmode=%s",
 		dbUser, dbPassword, dbName, dbHost, dbPort, dbSSLMode)
 
+	// создает объект *sql.DB для работы с базой
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		return nil, err
 	}
 
+	// подключение к базе данных
 	err = db.Ping()
 	if err != nil {
 		return nil, err
@@ -196,6 +198,55 @@ WHERE user_id = $2
 
 	return nil
 
+}
+
+func TransferMoneyDB(transfer models.TransferRequest) error {
+	if DB == nil {
+		return fmt.Errorf("база данных не инициализирована ")
+	}
+
+	tx, err := DB.Begin()
+	if err != nil {
+		return fmt.Errorf("ошибка транзакции: %w", err)
+	}
+	defer tx.Rollback()
+	transferFromQuery := `
+UPDATE balances 
+SET balance = balance - $1,
+    updated_at = CURRENT_TIMESTAMP
+WHERE user_id = $2 
+`
+
+	_, err = tx.Exec(transferFromQuery, transfer.Amount, transfer.FromUserID)
+	if err != nil {
+		return fmt.Errorf("ошибка обновления баланса: %w", err)
+	}
+	transferToFromQuery := `
+	UPDATE balances 
+SET balance = balance + $1,
+    updated_at = CURRENT_TIMESTAMP
+WHERE user_id = $2 
+	`
+
+	_, err = tx.Exec(transferToFromQuery, transfer.Amount, transfer.ToUserID)
+	if err != nil {
+		return fmt.Errorf("ошибка обновления баланса: %w", err)
+	}
+
+	transactionQuery := `
+INSERT INTO transactions (user_id,amount,type,related_user_id)
+VALUES ($1,$2,$3,$4)
+`
+
+	_, err = DB.Exec(transactionQuery, transfer.FromUserID, transfer.Amount, "transfer", transfer.ToUserID)
+	if err != nil {
+		return fmt.Errorf("ошибка записи транзакции: %w", err)
+	}
+
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("ошибка коммита транзакции: %w", err)
+	}
+	return nil
 }
 
 // Функция для обновления таблицы транзакций
