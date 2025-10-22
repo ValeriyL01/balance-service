@@ -1,11 +1,10 @@
 package service
 
 import (
-	"encoding/json"
 	"fmt"
-	"net/http"
-	"os"
+	"math"
 
+	"github.com/ValeriyL01/balance-service/internal/api"
 	"github.com/ValeriyL01/balance-service/internal/customErrors"
 	"github.com/ValeriyL01/balance-service/internal/database"
 
@@ -21,12 +20,13 @@ func GetBalance(userID int, currency string) (*models.BalanceResponse, error) {
 	}
 
 	if currency == "USD" {
-		rate, err := GetRUBtoUSDRate()
+		rate, err := api.GetRUBtoUSDRate()
 		if err != nil {
 			return nil, err
 		}
 		response.Balance = response.Balance * rate
 
+		response.Balance = math.Round(response.Balance*100) / 100
 	}
 
 	return response, err
@@ -92,28 +92,4 @@ func TransferMoneyService(transfer models.TransferRequest) error {
 	}
 	return nil
 
-}
-func GetRUBtoUSDRate() (float64, error) {
-	key := os.Getenv("EXCHANGERATE_API_KEY")
-	url := fmt.Sprintf("https://v6.exchangerate-api.com/v6/%s/pair/RUB/USD", key)
-	resp, err := http.Get(url)
-	if err != nil {
-		fmt.Println(err)
-		return 0, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("API вернуло ошибку: %s", resp.Status)
-	}
-
-	var data struct {
-		ConversionRate float64 `json:"conversion_rate"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return 0, err
-	}
-
-	return data.ConversionRate, nil
 }

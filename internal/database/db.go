@@ -4,10 +4,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/ValeriyL01/balance-service/internal/customErrors"
 	"github.com/ValeriyL01/balance-service/internal/models"
+	"github.com/ValeriyL01/balance-service/internal/utils"
 
 	_ "github.com/lib/pq"
 )
@@ -39,15 +39,12 @@ func ConnectAndInit() error {
 }
 
 func Connect() (*sql.DB, error) {
-	dbUser := getEnv("DB_USER", "")
-	dbPassword := getEnv("DB_PASSWORD", "")
-	dbName := getEnv("DB_NAME", "")
-	dbHost := getEnv("DB_HOST", "localhost")
-	dbPort := getEnv("DB_PORT", "5432")
-	dbSSLMode := getEnv("DB_SSLMODE", "disable")
+	dbUser := utils.GetEnv("DB_USER", "")
+	dbPassword := utils.GetEnv("DB_PASSWORD", "")
+	dbName := utils.GetEnv("DB_NAME", "")
 
-	connStr := fmt.Sprintf("user=%s password=%s dbname=%s host=%s port=%s sslmode=%s",
-		dbUser, dbPassword, dbName, dbHost, dbPort, dbSSLMode)
+	connStr := fmt.Sprintf("user=%s password=%s dbname=%s host=localhost port=5432 sslmode=disable",
+		dbUser, dbPassword, dbName)
 
 	// создает объект *sql.DB для работы с базой
 	db, err := sql.Open("postgres", connStr)
@@ -62,13 +59,6 @@ func Connect() (*sql.DB, error) {
 	}
 
 	return db, nil
-}
-
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
 }
 
 func createBalancesTable() error {
@@ -107,10 +97,6 @@ func createTransactionTable() error {
 
 func GetUserBalanceDB(userID int) (*models.BalanceResponse, error) {
 
-	if DB == nil {
-		return nil, fmt.Errorf("база данных не инициализирована ")
-	}
-
 	userBalance := `SELECT user_id, balance FROM balances WHERE user_id = $1`
 
 	data := DB.QueryRow(userBalance, userID)
@@ -131,9 +117,7 @@ func GetUserBalanceDB(userID int) (*models.BalanceResponse, error) {
 }
 
 func DepositBalanceDB(balance models.BalanceRequest) error {
-	if DB == nil {
-		return fmt.Errorf("база данных не инициализирована ")
-	}
+
 	tx, err := DB.Begin()
 	if err != nil {
 		return fmt.Errorf("ошибка транзакции: %w", err)
@@ -166,9 +150,7 @@ func DepositBalanceDB(balance models.BalanceRequest) error {
 }
 
 func WithdrawBalanceDB(balance models.BalanceRequest) error {
-	if DB == nil {
-		return fmt.Errorf("база данных не инициализирована ")
-	}
+
 	tx, err := DB.Begin()
 	if err != nil {
 		return fmt.Errorf("ошибка транзакции: %w", err)
@@ -201,9 +183,6 @@ WHERE user_id = $2
 }
 
 func TransferMoneyDB(transfer models.TransferRequest) error {
-	if DB == nil {
-		return fmt.Errorf("база данных не инициализирована ")
-	}
 
 	tx, err := DB.Begin()
 	if err != nil {
