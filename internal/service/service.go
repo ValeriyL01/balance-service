@@ -93,3 +93,30 @@ func TransferMoneyService(transfer models.TransferRequest) error {
 	return nil
 
 }
+
+func GetTransactionUserService(userID, page, limit int, sortBy, sortDir string) (*models.TransactionResponse, error) {
+	_, err := GetBalance(userID, "")
+	if err != nil {
+
+		return nil, err
+	}
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 50 {
+		limit = 10
+	}
+	if sortBy != "amount" {
+		sortBy = "created_at"
+	}
+	if sortDir != "asc" {
+		sortDir = "desc"
+	}
+	response := &models.TransactionResponse{}
+
+	response, err = database.GetTransactionUserDB(userID, page, limit, sortBy, sortDir)
+	if err != nil {
+		return nil, err
+	}
+	return response, nil
+}

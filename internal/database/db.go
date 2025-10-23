@@ -42,9 +42,12 @@ func Connect() (*sql.DB, error) {
 	dbUser := utils.GetEnv("DB_USER", "")
 	dbPassword := utils.GetEnv("DB_PASSWORD", "")
 	dbName := utils.GetEnv("DB_NAME", "")
+	dbHost := utils.GetEnv("DB_HOST", "localhost")
+	dbPort := utils.GetEnv("DB_PORT", "5432")
+	dbSSLMode := utils.GetEnv("DB_SSLMODE", "disable")
 
-	connStr := fmt.Sprintf("user=%s password=%s dbname=%s host=localhost port=5432 sslmode=disable",
-		dbUser, dbPassword, dbName)
+	connStr := fmt.Sprintf("user=%s password=%s dbname=%s host=%s port=%s sslmode=%s",
+		dbUser, dbPassword, dbName, dbHost, dbPort, dbSSLMode)
 
 	// создает объект *sql.DB для работы с базой
 	db, err := sql.Open("postgres", connStr)
@@ -241,4 +244,58 @@ VALUES ($1,$2,$3)
 	}
 
 	return nil
+}
+
+func GetTransactionUserDB(userID int, page, limit int, sortBy, sortDir string) (*models.TransactionResponse, error) {
+
+	offset := (page - 1) * limit
+
+	query := fmt.Sprintf(`
+        SELECT id, user_id, amount, type, related_user_id, created_at 
+        FROM transactions 
+        WHERE user_id = $1 
+        ORDER BY %s %s 
+        LIMIT $2 OFFSET $3
+    `, sortBy, sortDir)
+
+	rows, err := DB.Query(query, userID, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка запроса: %w", err)
+	}
+	defer rows.Close()
+
+	var transactions []models.Transaction
+	for rows.Next() {
+		var t models.Transaction
+
+		err := rows.Scan(
+			&t.ID,
+			&t.UserID,
+			&t.Amount,
+			&t.Type,
+			&t.RelatedUserID,
+			&t.CreatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("ошибка чтения: %w", err)
+		}
+
+		transactions = append(transactions, t)
+	}
+	total, err := getTotalTransactions(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.TransactionResponse{
+		Transactions: transactions,
+		Total:        total,
+		Page:         page,
+		PageSize:     limit,
+	}, nil
+}
+func getTotalTransactions(userID int) (int, error) {
+	var total int
+	err := DB.QueryRow("SELECT COUNT(*) FROM transactions WHERE user_id = $1", userID).Scan(&total)
+	return total, err
 }

@@ -19,7 +19,7 @@ func GetUserBalance(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Укажите user_id", http.StatusBadRequest)
 		return
 	}
-	
+
 	currency := r.URL.Query().Get("currency")
 
 	userID, err := strconv.Atoi(userIDStr)
@@ -149,4 +149,31 @@ func TransferMoney(w http.ResponseWriter, r *http.Request) {
 		"status":  "success",
 		"message": "Перевод выполнен успешно",
 	})
+}
+
+func GetTransactionUser(w http.ResponseWriter, r *http.Request) {
+	userIDStr := r.URL.Query().Get("user_id")
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	sortBy := r.URL.Query().Get("sort_by")
+	sortDir := r.URL.Query().Get("sort_dir")
+
+	if userIDStr == "" {
+		http.Error(w, "Укажите user_id", http.StatusBadRequest)
+		return
+	}
+
+	userID, err := strconv.Atoi(userIDStr)
+	if err != nil {
+		http.Error(w, "user_id должен быть числом", http.StatusBadRequest)
+		return
+	}
+
+	response, err := service.GetTransactionUserService(userID, page, limit, sortBy, sortDir)
+	if err != nil {
+		http.Error(w, "Не удалось получить транзакции", http.StatusInternalServerError)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }

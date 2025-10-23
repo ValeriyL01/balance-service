@@ -22,6 +22,13 @@ type Transaction struct {
 	CreatedAt     time.Time
 }
 
+type TransactionResponse struct {
+	Transactions []Transaction `json:"transactions"`
+	Total        int           `json:"total"`
+	Page         int           `json:"page"`
+	PageSize     int           `json:"page_size"`
+}
+
 type BalanceRequest struct {
 	UserID int64   `json:"user_id"`
 	Amount float64 `json:"amount"`
@@ -35,14 +42,5 @@ type TransferRequest struct {
 
 // структура для ответа от api по обмену валют для вывода счета в долларах
 type ExchangeRateResponse struct {
-	Result             string  `json:"result"`
-	Documentation      string  `json:"documentation"`
-	TermsOfUse         string  `json:"terms_of_use"`
-	TimeLastUpdateUnix int64   `json:"time_last_update_unix"`
-	TimeLastUpdateUTC  string  `json:"time_last_update_utc"`
-	TimeNextUpdateUnix int64   `json:"time_next_update_unix"`
-	TimeNextUpdateUTC  string  `json:"time_next_update_utc"`
-	BaseCode           string  `json:"base_code"`
-	TargetCode         string  `json:"target_code"`
-	ConversionRate     float64 `json:"conversion_rate"`
+	ConversionRate float64 `json:"conversion_rate"`
 }
