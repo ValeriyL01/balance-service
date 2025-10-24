@@ -7,64 +7,32 @@ import (
 
 	"github.com/ValeriyL01/balance-service/internal/customErrors"
 	"github.com/ValeriyL01/balance-service/internal/models"
-	"github.com/ValeriyL01/balance-service/internal/utils"
-
 	_ "github.com/lib/pq"
 )
 
-// Глобальная переменная для подключения к БД
-var DB *sql.DB
+type Database struct {
+	db *sql.DB
+}
 
-func ConnectAndInit() error {
-	db, err := Connect()
+func NewDatabase(db *sql.DB) *Database {
+	return &Database{db: db}
+}
+
+func (d *Database) InitTables() error {
+	err := d.createBalancesTable()
 	if err != nil {
-		return err
-	}
-
-	// Инициализируем глобальную переменную
-	DB = db
-
-	err = createBalancesTable()
-
-	if err != nil {
-		db.Close()
 		return fmt.Errorf("failed to init tables: %w", err)
 	}
-	err = createTransactionTable()
+
+	err = d.createTransactionTable()
 	if err != nil {
-		db.Close()
 		return fmt.Errorf("failed to init tables: %w", err)
 	}
+
 	return nil
 }
 
-func Connect() (*sql.DB, error) {
-	dbUser := utils.GetEnv("DB_USER", "")
-	dbPassword := utils.GetEnv("DB_PASSWORD", "")
-	dbName := utils.GetEnv("DB_NAME", "")
-	dbHost := utils.GetEnv("DB_HOST", "localhost")
-	dbPort := utils.GetEnv("DB_PORT", "5432")
-	dbSSLMode := utils.GetEnv("DB_SSLMODE", "disable")
-
-	connStr := fmt.Sprintf("user=%s password=%s dbname=%s host=%s port=%s sslmode=%s",
-		dbUser, dbPassword, dbName, dbHost, dbPort, dbSSLMode)
-
-	// создает объект *sql.DB для работы с базой
-	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		return nil, err
-	}
-
-	// подключение к базе данных
-	err = db.Ping()
-	if err != nil {
-		return nil, err
-	}
-
-	return db, nil
-}
-
-func createBalancesTable() error {
+func (d Database) createBalancesTable() error {
 	query := `
         CREATE TABLE IF NOT EXISTS balances (
             user_id BIGINT PRIMARY KEY,
@@ -73,7 +41,7 @@ func createBalancesTable() error {
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`
 
-	_, err := DB.Exec(query)
+	_, err := d.db.Exec(query)
 	if err != nil {
 		return fmt.Errorf("ошибка создания таблицы баланса: %w", err)
 	}
@@ -81,7 +49,7 @@ func createBalancesTable() error {
 	return nil
 }
 
-func createTransactionTable() error {
+func (d Database) createTransactionTable() error {
 	query := `
   CREATE TABLE IF NOT EXISTS transactions (
     id SERIAL PRIMARY KEY,
@@ -91,18 +59,18 @@ func createTransactionTable() error {
     related_user_id BIGINT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )`
-	_, err := DB.Exec(query)
+	_, err := d.db.Exec(query)
 	if err != nil {
 		return fmt.Errorf("ошибка создания таблицы транзакций: %w", err)
 	}
 	return nil
 }
 
-func GetUserBalanceDB(userID int) (*models.BalanceResponse, error) {
+func (d Database) GetUserBalance(userID int) (*models.BalanceResponse, error) {
 
 	userBalance := `SELECT user_id, balance FROM balances WHERE user_id = $1`
 
-	data := DB.QueryRow(userBalance, userID)
+	data := d.db.QueryRow(userBalance, userID)
 
 	balance := &models.BalanceResponse{}
 
@@ -119,9 +87,9 @@ func GetUserBalanceDB(userID int) (*models.BalanceResponse, error) {
 	return balance, nil
 }
 
-func DepositBalanceDB(balance models.BalanceRequest) error {
+func (d Database) DepositBalance(balance models.BalanceRequest) error {
 
-	tx, err := DB.Begin()
+	tx, err := d.db.Begin()
 	if err != nil {
 		return fmt.Errorf("ошибка транзакции: %w", err)
 	}
@@ -140,7 +108,7 @@ func DepositBalanceDB(balance models.BalanceRequest) error {
 		return fmt.Errorf("ошибка обновления баланса: %w", err)
 	}
 
-	err = transactionEntry(balance, "deposit")
+	err = d.transactionEntry(balance, "deposit")
 	if err != nil {
 		return err
 	}
@@ -152,9 +120,9 @@ func DepositBalanceDB(balance models.BalanceRequest) error {
 	return nil
 }
 
-func WithdrawBalanceDB(balance models.BalanceRequest) error {
+func (d Database) WithdrawBalance(balance models.BalanceRequest) error {
 
-	tx, err := DB.Begin()
+	tx, err := d.db.Begin()
 	if err != nil {
 		return fmt.Errorf("ошибка транзакции: %w", err)
 	}
@@ -172,7 +140,7 @@ WHERE user_id = $2
 		return fmt.Errorf("ошибка обновления баланса: %w", err)
 	}
 
-	err = transactionEntry(balance, "withdraw")
+	err = d.transactionEntry(balance, "withdraw")
 	if err != nil {
 		return err
 	}
@@ -185,9 +153,9 @@ WHERE user_id = $2
 
 }
 
-func TransferMoneyDB(transfer models.TransferRequest) error {
+func (d Database) TransferMoney(transfer models.TransferRequest) error {
 
-	tx, err := DB.Begin()
+	tx, err := d.db.Begin()
 	if err != nil {
 		return fmt.Errorf("ошибка транзакции: %w", err)
 	}
@@ -220,7 +188,7 @@ INSERT INTO transactions (user_id,amount,type,related_user_id)
 VALUES ($1,$2,$3,$4)
 `
 
-	_, err = DB.Exec(transactionQuery, transfer.FromUserID, transfer.Amount, "transfer", transfer.ToUserID)
+	_, err = d.db.Exec(transactionQuery, transfer.FromUserID, transfer.Amount, "transfer", transfer.ToUserID)
 	if err != nil {
 		return fmt.Errorf("ошибка записи транзакции: %w", err)
 	}
@@ -232,13 +200,13 @@ VALUES ($1,$2,$3,$4)
 }
 
 // Функция для обновления таблицы транзакций
-func transactionEntry(balance models.BalanceRequest, tpansactionType string) error {
+func (d Database) transactionEntry(balance models.BalanceRequest, tpansactionType string) error {
 	transactionQuery := `
 INSERT INTO transactions (user_id,amount,type)
 VALUES ($1,$2,$3)
 `
 
-	_, err := DB.Exec(transactionQuery, balance.UserID, balance.Amount, tpansactionType)
+	_, err := d.db.Exec(transactionQuery, balance.UserID, balance.Amount, tpansactionType)
 	if err != nil {
 		return fmt.Errorf("ошибка записи транзакции: %w", err)
 	}
@@ -246,7 +214,7 @@ VALUES ($1,$2,$3)
 	return nil
 }
 
-func GetTransactionUserDB(userID int, page, limit int, sortBy, sortDir string) (*models.TransactionResponse, error) {
+func (d Database) GetTransactionUser(userID int, page, limit int, sortBy, sortDir string) (*models.TransactionResponse, error) {
 
 	offset := (page - 1) * limit
 
@@ -258,7 +226,7 @@ func GetTransactionUserDB(userID int, page, limit int, sortBy, sortDir string) (
         LIMIT $2 OFFSET $3
     `, sortBy, sortDir)
 
-	rows, err := DB.Query(query, userID, limit, offset)
+	rows, err := d.db.Query(query, userID, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса: %w", err)
 	}
@@ -282,7 +250,7 @@ func GetTransactionUserDB(userID int, page, limit int, sortBy, sortDir string) (
 
 		transactions = append(transactions, t)
 	}
-	total, err := getTotalTransactions(userID)
+	total, err := d.getTotalTransactions(userID)
 	if err != nil {
 		return nil, err
 	}
@@ -294,8 +262,8 @@ func GetTransactionUserDB(userID int, page, limit int, sortBy, sortDir string) (
 		PageSize:     limit,
 	}, nil
 }
-func getTotalTransactions(userID int) (int, error) {
+func (d Database) getTotalTransactions(userID int) (int, error) {
 	var total int
-	err := DB.QueryRow("SELECT COUNT(*) FROM transactions WHERE user_id = $1", userID).Scan(&total)
+	err := d.db.QueryRow("SELECT COUNT(*) FROM transactions WHERE user_id = $1", userID).Scan(&total)
 	return total, err
 }

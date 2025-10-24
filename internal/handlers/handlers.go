@@ -12,7 +12,15 @@ import (
 	"github.com/ValeriyL01/balance-service/internal/service"
 )
 
-func GetUserBalance(w http.ResponseWriter, r *http.Request) {
+type Handler struct {
+	balanceService *service.BalanceService
+}
+
+func NewHandler(balanceService *service.BalanceService) *Handler {
+	return &Handler{balanceService: balanceService}
+}
+
+func (h Handler) GetUserBalance(w http.ResponseWriter, r *http.Request) {
 
 	userIDStr := r.URL.Query().Get("user_id")
 	if userIDStr == "" {
@@ -28,7 +36,7 @@ func GetUserBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// если в Query параметры передано currency=USD возвращаем в долларах в любых других случаях в рублях
-	response, err := service.GetBalance(userID, currency)
+	response, err := h.balanceService.GetBalance(userID, currency)
 	if err != nil {
 
 		if errors.Is(err, customErrors.ErrUserNotFound) {
@@ -45,7 +53,7 @@ func GetUserBalance(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func DepositBalance(w http.ResponseWriter, r *http.Request) {
+func (h Handler) DepositBalance(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "нужен метод POST", http.StatusMethodNotAllowed)
 		return
@@ -58,7 +66,7 @@ func DepositBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := service.DepositBalanceService(request)
+	err := h.balanceService.DepositBalance(request)
 	if err != nil {
 		log.Printf("Ошибка при пополнении баланса: %v", err)
 
@@ -78,7 +86,7 @@ func DepositBalance(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func WithdrawBalance(w http.ResponseWriter, r *http.Request) {
+func (h Handler) WithdrawBalance(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "нужен метод POST", http.StatusMethodNotAllowed)
 	}
@@ -91,7 +99,7 @@ func WithdrawBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := service.WithdrawBalanceService(request)
+	err := h.balanceService.WithdrawBalance(request)
 	if err != nil {
 
 		if errors.Is(err, customErrors.ErrInvalidAmount) {
@@ -115,7 +123,7 @@ func WithdrawBalance(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func TransferMoney(w http.ResponseWriter, r *http.Request) {
+func (h Handler) TransferMoney(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "нужен метод POST", http.StatusMethodNotAllowed)
 	}
@@ -126,7 +134,7 @@ func TransferMoney(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := service.TransferMoneyService(request)
+	err := h.balanceService.TransferMoney(request)
 	if err != nil {
 
 		if errors.Is(err, customErrors.ErrInvalidAmount) {
@@ -151,7 +159,7 @@ func TransferMoney(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func GetTransactionUser(w http.ResponseWriter, r *http.Request) {
+func (h Handler) GetTransactionUser(w http.ResponseWriter, r *http.Request) {
 	userIDStr := r.URL.Query().Get("user_id")
 	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
@@ -169,7 +177,7 @@ func GetTransactionUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response, err := service.GetTransactionUserService(userID, page, limit, sortBy, sortDir)
+	response, err := h.balanceService.GetTransactionUser(userID, page, limit, sortBy, sortDir)
 	if err != nil {
 		http.Error(w, "Не удалось получить транзакции", http.StatusInternalServerError)
 	}

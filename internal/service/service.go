@@ -11,8 +11,16 @@ import (
 	"github.com/ValeriyL01/balance-service/internal/models"
 )
 
-func GetBalance(userID int, currency string) (*models.BalanceResponse, error) {
-	response, err := database.GetUserBalanceDB(userID)
+type BalanceService struct {
+	dataBaseStruct *database.Database
+}
+
+func NewBalanceService(dataBaseStruct *database.Database) *BalanceService {
+	return &BalanceService{dataBaseStruct: dataBaseStruct}
+}
+
+func (b BalanceService) GetBalance(userID int, currency string) (*models.BalanceResponse, error) {
+	response, err := b.dataBaseStruct.GetUserBalance(userID)
 
 	if err != nil {
 
@@ -32,25 +40,25 @@ func GetBalance(userID int, currency string) (*models.BalanceResponse, error) {
 	return response, err
 }
 
-func DepositBalanceService(balance models.BalanceRequest) error {
+func (b BalanceService) DepositBalance(balance models.BalanceRequest) error {
 	if balance.Amount <= 0 {
 		return customErrors.ErrInvalidAmount
 	}
 
-	err := database.DepositBalanceDB(balance)
+	err := b.dataBaseStruct.DepositBalance(balance)
 	if err != nil {
 		return fmt.Errorf("не удалось пополнить баланс: %w", err)
 	}
 	return nil
 }
 
-func WithdrawBalanceService(balance models.BalanceRequest) error {
+func (b BalanceService) WithdrawBalance(balance models.BalanceRequest) error {
 	if balance.Amount <= 0 {
 		return customErrors.ErrInvalidAmount
 	}
 
 	// что бы списать деньги, сначала нужно получить баланс юзера
-	userBalance, err := GetBalance(int(balance.UserID), "")
+	userBalance, err := b.GetBalance(int(balance.UserID), "")
 	if err != nil {
 		return err
 	}
@@ -59,7 +67,7 @@ func WithdrawBalanceService(balance models.BalanceRequest) error {
 		return customErrors.ErrNoMoney
 	}
 
-	err = database.WithdrawBalanceDB(balance)
+	err = b.dataBaseStruct.WithdrawBalance(balance)
 	if err != nil {
 		return fmt.Errorf("не удалось списать деньги: %w", err)
 	}
@@ -67,17 +75,17 @@ func WithdrawBalanceService(balance models.BalanceRequest) error {
 
 }
 
-func TransferMoneyService(transfer models.TransferRequest) error {
+func (b BalanceService) TransferMoney(transfer models.TransferRequest) error {
 	if transfer.Amount <= 0 {
 		return customErrors.ErrInvalidAmount
 	}
 
-	userBalance, err := GetBalance(int(transfer.FromUserID), "")
+	userBalance, err := b.GetBalance(int(transfer.FromUserID), "")
 	if err != nil {
 
 		return err
 	}
-	_, err = GetBalance(int(transfer.ToUserID), "")
+	_, err = b.GetBalance(int(transfer.ToUserID), "")
 	if err != nil {
 
 		return err
@@ -86,7 +94,7 @@ func TransferMoneyService(transfer models.TransferRequest) error {
 		return customErrors.ErrNoMoney
 	}
 
-	err = database.TransferMoneyDB(transfer)
+	err = b.dataBaseStruct.TransferMoney(transfer)
 	if err != nil {
 		return fmt.Errorf("не удалось перевести деньги: %w", err)
 	}
@@ -94,8 +102,8 @@ func TransferMoneyService(transfer models.TransferRequest) error {
 
 }
 
-func GetTransactionUserService(userID, page, limit int, sortBy, sortDir string) (*models.TransactionResponse, error) {
-	_, err := GetBalance(userID, "")
+func (b BalanceService) GetTransactionUser(userID, page, limit int, sortBy, sortDir string) (*models.TransactionResponse, error) {
+	_, err := b.GetBalance(userID, "")
 	if err != nil {
 
 		return nil, err
@@ -114,7 +122,7 @@ func GetTransactionUserService(userID, page, limit int, sortBy, sortDir string) 
 	}
 	response := &models.TransactionResponse{}
 
-	response, err = database.GetTransactionUserDB(userID, page, limit, sortBy, sortDir)
+	response, err = b.dataBaseStruct.GetTransactionUser(userID, page, limit, sortBy, sortDir)
 	if err != nil {
 		return nil, err
 	}
