@@ -88,12 +88,12 @@ func (d Database) GetUserBalance(userID int) (*models.BalanceResponse, error) {
 }
 
 func (d Database) DepositBalance(balance models.BalanceRequest) error {
-
 	tx, err := d.db.Begin()
 	if err != nil {
 		return fmt.Errorf("ошибка транзакции: %w", err)
 	}
 	defer tx.Rollback()
+
 	balanceQuery := `
 		INSERT INTO balances (user_id, balance) 
 		VALUES ($1, $2)
@@ -121,7 +121,6 @@ func (d Database) DepositBalance(balance models.BalanceRequest) error {
 }
 
 func (d Database) WithdrawBalance(balance models.BalanceRequest) error {
-
 	tx, err := d.db.Begin()
 	if err != nil {
 		return fmt.Errorf("ошибка транзакции: %w", err)
@@ -160,6 +159,7 @@ func (d Database) TransferMoney(transfer models.TransferRequest) error {
 		return fmt.Errorf("ошибка транзакции: %w", err)
 	}
 	defer tx.Rollback()
+
 	transferFromQuery := `
 UPDATE balances 
 SET balance = balance - $1,
@@ -171,6 +171,7 @@ WHERE user_id = $2
 	if err != nil {
 		return fmt.Errorf("ошибка обновления баланса: %w", err)
 	}
+
 	transferToFromQuery := `
 	UPDATE balances 
 SET balance = balance + $1,

@@ -1,1 +1,1 @@
-# balance-service
+# Balance Service

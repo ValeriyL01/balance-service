@@ -4,20 +4,13 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/ValeriyL01/balance-service/internal/utils"
+	"github.com/ValeriyL01/balance-service/internal/config"
 	_ "github.com/lib/pq"
 )
 
-func Connect() (*sql.DB, error) {
-	dbUser := utils.GetEnv("DB_USER", "")
-	dbPassword := utils.GetEnv("DB_PASSWORD", "")
-	dbName := utils.GetEnv("DB_NAME", "")
-	dbHost := utils.GetEnv("DB_HOST", "localhost")
-	dbPort := utils.GetEnv("DB_PORT", "5432")
-	dbSSLMode := utils.GetEnv("DB_SSLMODE", "disable")
-
+func Connect(config config.DB) (*sql.DB, error) {
 	connStr := fmt.Sprintf("user=%s password=%s dbname=%s host=%s port=%s sslmode=%s",
-		dbUser, dbPassword, dbName, dbHost, dbPort, dbSSLMode)
+		config.User, config.Password, config.Name, config.Host, config.Port, config.SSLMode)
 
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {

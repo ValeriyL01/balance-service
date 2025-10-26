@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/ValeriyL01/balance-service/internal/api"
+	"github.com/ValeriyL01/balance-service/internal/client"
 	"github.com/ValeriyL01/balance-service/internal/customErrors"
 	"github.com/ValeriyL01/balance-service/internal/database"
 
@@ -28,7 +28,7 @@ func (b BalanceService) GetBalance(userID int, currency string) (*models.Balance
 	}
 
 	if currency == "USD" {
-		rate, err := api.GetRUBtoUSDRate()
+		rate, err := client.GetRUBtoUSDRate()
 		if err != nil {
 			return nil, err
 		}

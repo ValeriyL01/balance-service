@@ -90,7 +90,6 @@ func (h Handler) WithdrawBalance(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "нужен метод POST", http.StatusMethodNotAllowed)
 	}
-
 	var request models.BalanceRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {

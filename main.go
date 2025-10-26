@@ -2,22 +2,23 @@ package main
 
 import (
 	"log"
-	"net/http"
 
+	"github.com/ValeriyL01/balance-service/internal/config"
 	"github.com/ValeriyL01/balance-service/internal/database"
 	"github.com/ValeriyL01/balance-service/internal/handlers"
+	"github.com/ValeriyL01/balance-service/internal/server"
 	"github.com/ValeriyL01/balance-service/internal/service"
-	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
 func main() {
-	err := godotenv.Load()
+
+	cfg, err := config.Parse()
 	if err != nil {
-		log.Println("Файл .env не найден")
+		log.Fatal(err)
 	}
 
-	db, err := database.Connect()
+	db, err := database.Connect(cfg.DB)
 	if err != nil {
 		log.Fatal("Ошибка подключения к БД:", err)
 	}
@@ -33,13 +34,10 @@ func main() {
 
 	handler := handlers.NewHandler(balanceServise)
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/balance", handler.GetUserBalance)
-	mux.HandleFunc("/deposit", handler.DepositBalance)
-	mux.HandleFunc("/withdraw", handler.WithdrawBalance)
-	mux.HandleFunc("/transfer", handler.TransferMoney)
-	mux.HandleFunc("/transactions", handler.GetTransactionUser)
-	err = http.ListenAndServe(":4000", mux)
+	srv := server.NewServer(cfg.Port, handler)
 
-	log.Fatal(err)
+	err = srv.Run()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
