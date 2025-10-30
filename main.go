@@ -25,16 +25,17 @@ func main() {
 	defer db.Close()
 
 	dataBase := database.NewDatabase(db)
-
+	userDB := database.NewUserDB(db)
 	err = dataBase.InitTables()
 	if err != nil {
 		log.Fatal("Ошибка инициализации таблиц:", err)
 	}
-	balanceServise := service.NewBalanceService(dataBase)
+	balanceService := service.NewBalanceService(dataBase)
+	userService := service.NewUserService(userDB)
 
-	handler := handlers.NewHandler(balanceServise)
-
-	srv := server.NewServer(cfg.Port, handler)
+	handler := handlers.NewHandler(balanceService)
+	userHandler := handlers.NewUserHandler(userService)
+	srv := server.NewServer(cfg.Port, handler, userHandler)
 
 	err = srv.Run()
 	if err != nil {

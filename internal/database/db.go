@@ -19,23 +19,34 @@ func NewDatabase(db *sql.DB) *Database {
 }
 
 func (d *Database) InitTables() error {
-	err := d.createBalancesTable()
-	if err != nil {
-		return fmt.Errorf("failed to init tables: %w", err)
+	if err := d.createUsersTable(); err != nil {
+		return fmt.Errorf("failed to create users table: %w", err)
 	}
-
-	err = d.createTransactionTable()
-	if err != nil {
-		return fmt.Errorf("failed to init tables: %w", err)
+	if err := d.createBalancesTable(); err != nil {
+		return fmt.Errorf("failed to create balances table: %w", err)
 	}
-
+	if err := d.createTransactionTable(); err != nil {
+		return fmt.Errorf("failed to create transactions table: %w", err)
+	}
 	return nil
 }
-
+func (d Database) createUsersTable() error {
+	query := `
+        CREATE TABLE IF NOT EXISTS users (
+            id BIGSERIAL PRIMARY KEY,
+            username VARCHAR(50) UNIQUE NOT NULL,
+            email VARCHAR(100) UNIQUE NOT NULL,
+            password_hash VARCHAR(255) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`
+	_, err := d.db.Exec(query)
+	return err
+}
 func (d Database) createBalancesTable() error {
 	query := `
         CREATE TABLE IF NOT EXISTS balances (
-            user_id BIGINT PRIMARY KEY,
+            user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
             balance DECIMAL(15,2) NOT NULL DEFAULT 0.00,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -53,7 +64,7 @@ func (d Database) createTransactionTable() error {
 	query := `
   CREATE TABLE IF NOT EXISTS transactions (
     id SERIAL PRIMARY KEY,
-    user_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     amount DECIMAL(15,2) NOT NULL,
     type VARCHAR(20) NOT NULL,
     related_user_id BIGINT,

@@ -6,7 +6,7 @@ import (
 )
 
 func Parse() (Config, error) {
-	
+
 	godotenv.Load()
 
 	var cfg Config
@@ -16,17 +16,17 @@ func Parse() (Config, error) {
 }
 
 type Config struct {
-	DB DB
+	DB
 
-	APIKey string `env:"EXCHANGERATE_API_KEY" envDefault:""`
-	Port   string `env:"APP_PORT" envDefault:"4000"`
+	APIKey string `env:"EXCHANGERATE_API_KEY"`
+	Port   string `env:"APP_PORT"`
 }
 
 type DB struct {
-	User     string `env:"DB_USER" envDefault:"postgres"`
-	Password string `env:"DB_PASSWORD, unset" `
-	Name     string `env:"DB_NAME" envDefault:"balance"`
-	Host     string `env:"DB_HOST" envDefault:"localhost"`
-	Port     string `env:"DB_PORT" envDefault:"5432"`
-	SSLMode  string `env:"DB_SSLMODE" envDefault:"disable"`
+	User     string `env:"DB_USER" `
+	Password string `env:"DB_PASSWORD"  `
+	Name     string `env:"DB_NAME" `
+	Host     string `env:"DB_HOST"`
+	Port     string `env:"DB_PORT" `
+	SSLMode  string `env:"DB_SSLMODE" `
 }
